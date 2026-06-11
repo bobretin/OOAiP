@@ -1,23 +1,37 @@
-﻿import { Shape } from './Shape';
+import { Shape } from './Shape';
 import { Bounds } from './Bounds';
-import { RasterRenderer } from '.././raster/RasterRenderer.ts';
-import { Point2D } from '.././math/mat3';
+import { RasterRenderer } from '../raster/RasterRenderer';
+import { Point2D } from '../math/mat3';
 
 export class Triangle extends Shape {
     private _p1: Point2D;
     private _p2: Point2D;
     private _p3: Point2D;
 
-    constructor(w: number, h: number) {
+    // Основной конструктор - принимает три вершины
+    constructor(p1: Point2D, p2: Point2D, p3: Point2D) {
         super();
 
-        // Вычисляем центр масс и сохраняем вершины относительно него
-        const cx = (0 + (-w / 2) + (w / 2)) / 3;
-        const cy = ((-h / 2) + (h / 2) + (h / 2)) / 3;
+        // Вычисляем центр масс
+        const cx = (p1.x + p2.x + p3.x) / 3;
+        const cy = (p1.y + p2.y + p3.y) / 3;
 
-        this._p1 = { x: 0 - cx, y: -h / 2 - cy };
-        this._p2 = { x: -w / 2 - cx, y: h / 2 - cy };
-        this._p3 = { x: w / 2 - cx, y: h / 2 - cy };
+        // Сохраняем вершины относительно центра
+        this._p1 = { x: p1.x - cx, y: p1.y - cy };
+        this._p2 = { x: p2.x - cx, y: p2.y - cy };
+        this._p3 = { x: p3.x - cx, y: p3.y - cy };
+        
+        // Устанавливаем трансформацию в центр
+        this.transform.x = cx;
+        this.transform.y = cy;
+    }
+
+    // Статический метод для создания равнобедренного треугольника
+    static fromWidthHeight(w: number, h: number): Triangle {
+        const apex = { x: 0, y: -h / 2 };
+        const leftBase = { x: -w / 2, y: h / 2 };
+        const rightBase = { x: w / 2, y: h / 2 };
+        return new Triangle(apex, leftBase, rightBase);
     }
 
     // Геттеры для вершин
@@ -25,7 +39,6 @@ export class Triangle extends Shape {
     get p2(): Point2D { return { ...this._p2 }; }
     get p3(): Point2D { return { ...this._p3 }; }
 
-    // Методы для работы с контрольными точками (согласно спецификации)
     getControlPoints(): Point2D[] {
         return [this._p1, this._p2, this._p3];
     }
@@ -39,21 +52,7 @@ export class Triangle extends Shape {
         }
     }
 
-    // evalLocal не применим для треугольника (это не кривая)
-    evalLocal(_t: number): Point2D {
-        throw new Error('evalLocal is not applicable for Triangle');
-    }
-
-    // flattenDevicePoints для аппроксимации (треугольник уже является ломаной)
-    flattenDevicePoints(_flatness: number): Point2D[] {
-        return [
-            this.transformPointToDevice(this._p1.x, this._p1.y),
-            this.transformPointToDevice(this._p2.x, this._p2.y),
-            this.transformPointToDevice(this._p3.x, this._p3.y),
-        ];
-    }
-
-    getLocalBounds(): Bounds | null{
+    getLocalBounds(): Bounds | null {
         return Bounds.fromPoints([this.p1, this.p2, this.p3]);
     }
 
@@ -77,7 +76,7 @@ export class Triangle extends Shape {
             r.fillPolygon(devicePoints, this.getFillColor());
         }
 
-        if (this.strokeOpacity > 0 && this.strokeWidth > 0){
+        if (this.strokeOpacity > 0 && this.strokeWidth > 0) {
             r.strokePolygon(devicePoints, this.getStrokeColor(), this.strokeWidth);
         }
     }
@@ -90,14 +89,13 @@ export class Triangle extends Shape {
             return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
         };
 
-        const d1 = sign(localP, this.p1, this.p2);
-        const d2 = sign(localP, this.p2, this.p3);
-        const d3 = sign(localP, this.p3, this.p1);
+        const d1 = sign(localP, this._p1, this._p2);
+        const d2 = sign(localP, this._p2, this._p3);
+        const d3 = sign(localP, this._p3, this._p1);
 
         const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
         const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
 
-        // Если все знаки одинаковые (или ноль), точка внутри
         return !(hasNeg && hasPos);
     }
 
@@ -107,21 +105,27 @@ export class Triangle extends Shape {
             p1: this._p1,
             p2: this._p2,
             p3: this._p3,
-            transform: this.transform,
+            transform: {
+                x: this.transform.x,
+                y: this.transform.y,
+                rotation: this.transform.rotation,
+                scaleX: this.transform.scaleX,
+                scaleY: this.transform.scaleY
+            },
             fillStyle: this.fillStyle,
             fillOpacity: this.fillOpacity,
             strokeStyle: this.strokeStyle,
             strokeWidth: this.strokeWidth,
             strokeOpacity: this.strokeOpacity,
-            version: 1,
         };
     }
 
     clone(): Triangle {
-        const cloned = new Triangle(1, 1);
-        cloned._p1 = { ...this._p1 };
-        cloned._p2 = { ...this._p2 };
-        cloned._p3 = { ...this._p3 };
+        const cloned = new Triangle(
+            { ...this._p1 },
+            { ...this._p2 },
+            { ...this._p3 }
+        );
         cloned.transform = this.transform.clone();
         cloned.fillStyle = this.fillStyle;
         cloned.fillOpacity = this.fillOpacity;

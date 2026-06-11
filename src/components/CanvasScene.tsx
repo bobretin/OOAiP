@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LineAlg, RasterRenderer } from "../lib/raster/RasterRenderer";
 import { Rect } from "../lib/shapes/Rect";
 import { Line } from "../lib/shapes/Line";
@@ -16,13 +16,83 @@ export default function CanvasScene({ lineAlg }: CanvasSceneProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rendererRef = useRef<RasterRenderer | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
+    
+    // Масштабирование и панорамирование
+    const [zoom, setZoom] = useState(1);
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const [isPanning, setIsPanning] = useState(false);
+    const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
-    // Храним фигуры в рефе, чтобы не пересоздавать их при каждом рендере React
+    // Храним фигуры и их оригинальные координаты
     const shapesRef = useRef<any[]>([]);
+    const originalTransformsRef = useRef<{ x: number; y: number; scaleX: number; scaleY: number }[]>([]);
+    const initializedRef = useRef(false);
 
-    // Инициализация фигур (выполняется один раз при монтировании)
+    // Функция для обновления трансформаций всех фигур с учетом зума и оффсета
+    const updateShapesTransform = () => {
+        for (let i = 0; i < shapesRef.current.length; i++) {
+            const shape = shapesRef.current[i];
+            const original = originalTransformsRef.current[i];
+            if (shape && original) {
+                // Применяем зум к позиции и масштабу
+                shape.transform.x = original.x * zoom + offset.x;
+                shape.transform.y = original.y * zoom + offset.y;
+                shape.transform.scaleX = original.scaleX * zoom;
+                shape.transform.scaleY = original.scaleY * zoom;
+            }
+        }
+    };
+
+    // Обработчики для масштабирования и панорамирования
+    const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.05 : 0.05;
+            const newZoom = Math.min(5, Math.max(0.2, zoom + delta));
+            setZoom(newZoom);
+        }
+    };
+
+    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (e.button === 1) {
+            e.preventDefault();
+            setIsPanning(true);
+            setPanStart({ x: e.clientX, y: e.clientY });
+        }
+    };
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (isPanning) {
+            const dx = e.clientX - panStart.x;
+            const dy = e.clientY - panStart.y;
+            setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+            setPanStart({ x: e.clientX, y: e.clientY });
+        }
+    };
+
+    const handleMouseUp = () => {
+        setIsPanning(false);
+    };
+
+    // Обновление трансформаций при изменении зума или оффсета
     useEffect(() => {
-        // Существующие фигуры 
+        if (shapesRef.current.length > 0) {
+            updateShapesTransform();
+        }
+    }, [zoom, offset]);
+
+    // Обновление алгоритма линий
+    useEffect(() => {
+        if (rendererRef.current) {
+            rendererRef.current.setLineAlgorithm(lineAlg);
+        }
+    }, [lineAlg]);
+
+    // Инициализация фигур (один раз)
+    useEffect(() => {
+        if (initializedRef.current) return;
+        initializedRef.current = true;
+
         const rect = new Rect(200, 100);
         rect.transform.x = 400;
         rect.transform.y = 300;
@@ -48,7 +118,7 @@ export default function CanvasScene({ lineAlg }: CanvasSceneProps) {
         oval.strokeWidth = 2;
 
         // Новая фигура: Triangle
-        const triangle = new Triangle(150, 120);
+        const triangle = Triangle.fromWidthHeight(150, 120);
         triangle.transform.x = 200;
         triangle.transform.y = 200;
         triangle.transform.rotation = Math.PI / 8;
@@ -144,7 +214,7 @@ export default function CanvasScene({ lineAlg }: CanvasSceneProps) {
         catmullClosed.strokeStyle = "#ffffff";
         catmullClosed.strokeWidth = 2;
 
-        //Сохраняем все фигуры в реф
+        // Сохраняем все фигуры и их оригинальные трансформации
         shapesRef.current = [
             rect, line, oval,
             triangle,
@@ -152,15 +222,20 @@ export default function CanvasScene({ lineAlg }: CanvasSceneProps) {
             cubicBezier1, cubicBezier2,
             polyline, closedPoly, bezierPath, catmullOpen, catmullClosed
         ];
+
+        // Сохраняем оригинальные значения трансформаций
+        originalTransformsRef.current = shapesRef.current.map(shape => ({
+            x: shape.transform.x,
+            y: shape.transform.y,
+            scaleX: shape.transform.scaleX,
+            scaleY: shape.transform.scaleY
+        }));
+
+        // Применяем начальный зум
+        updateShapesTransform();
     }, []);
 
-    useEffect(() =>{
-        if (rendererRef.current)
-        {
-            rendererRef.current.setLineAlgorithm(lineAlg);
-        }
-    }, [lineAlg]);
-
+    // Основной цикл рендеринга
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -181,18 +256,19 @@ export default function CanvasScene({ lineAlg }: CanvasSceneProps) {
 
         let rafId: number;
 
-        const frame = () =>{
+        const frame = () => {
             const r = rendererRef.current;
-            
             if (r) {
-                r.beginFrame(true); // Очистка буфера
+                r.beginFrame(true);
 
-                // Отрисовка всех фигур из рефа
+                // Отрисовка всех фигур
                 for (const shape of shapesRef.current) {
-                    shape.drawRaster(r);
+                    if (shape && typeof shape.drawRaster === 'function') {
+                        shape.drawRaster(r);
+                    }
                 }
 
-                r.commit(); // Вывод на экран
+                r.commit();
             }
             rafId = requestAnimationFrame(frame);
         };
@@ -215,17 +291,44 @@ export default function CanvasScene({ lineAlg }: CanvasSceneProps) {
                 width: '100%',
                 height: '100%',
                 display: 'block',
-                background: '#000' // Черный фон, чтобы видеть прозрачность
+                background: '#1a1a2e',
+                position: 'relative',
+                overflow: 'hidden'
             }}
+            onWheel={handleWheel}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
         >
             <canvas
                 ref={canvasRef}
                 style={{
                     display: 'block',
                     width: '100%',
-                    height: '100%'
+                    height: '100%',
+                    cursor: isPanning ? 'grabbing' : 'grab'
                 }}
             />
+            {/* Индикатор масштаба и координат */}
+            <div style={{
+                position: 'absolute',
+                bottom: 10,
+                right: 10,
+                background: 'rgba(0,0,0,0.7)',
+                color: 'white',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                pointerEvents: 'none',
+                zIndex: 10
+            }}>
+                🔍 {(zoom * 100).toFixed(0)}%
+                <span style={{ fontSize: '10px', color: '#aaa', display: 'block' }}>
+                    Ctrl+Колесо | Средняя кнопка мыши
+                </span>
+            </div>
         </div>
     );
 }
