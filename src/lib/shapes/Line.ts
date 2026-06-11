@@ -2,15 +2,13 @@
 import { Bounds } from './Bounds';
 import { RasterRenderer } from '.././raster/RasterRenderer.ts';
 
-export class Line extends Shape 
-{
+export class Line extends Shape {
     x1: number;
     y1: number;
     x2: number;
     y2: number;
 
-    constructor(x1: number, y1: number, x2: number, y2: number) 
-    {
+    constructor(x1: number, y1: number, x2: number, y2: number) {
         super();
         this.x1 = x1;
         this.y1 = y1;
@@ -63,8 +61,7 @@ export class Line extends Shape
         return dist <= this.strokeWidth / 2;
     }
 
-    private pointToSegmentDistance(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number 
-    {
+    private pointToSegmentDistance(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
         const dx = x2 - x1;
         const dy = y2 - y1;
         const lenSq = dx * dx + dy * dy;

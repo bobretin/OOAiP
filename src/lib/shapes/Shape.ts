@@ -5,8 +5,7 @@ import { RasterRenderer, RGBA, hexToRGBA } from '../raster/RasterRenderer.ts';
 
 let nextId = 1;
 
-export abstract class Shape 
-{
+export abstract class Shape {
     id: number;
     transform: Transform;
     fillStyle: string;
@@ -25,25 +24,21 @@ export abstract class Shape
         this.strokeOpacity = 1.0;
     }
 
-    getLocalToDeviceMatrix(): Mat3 
-    {
+    getLocalToDeviceMatrix(): Mat3 {
         return this.transform.toMatrix();
     }
 
-    getDeviceToLocalMatrix(): Mat3 | null 
-    {
+    getDeviceToLocalMatrix(): Mat3 | null {
         const localToDevice = this.getLocalToDeviceMatrix();
         return mat3.invert(localToDevice);
     }
 
-    transformPointToDevice(px: number, py: number): Point2D 
-    {
+    transformPointToDevice(px: number, py: number): Point2D {
         const m = this.getLocalToDeviceMatrix();
         return mat3.transformPoint(m, px, py);
     }
 
-    transformPointToLocal(px: number, py: number): Point2D | null 
-    {
+    transformPointToLocal(px: number, py: number): Point2D | null {
         const m = this.getDeviceToLocalMatrix();
         if (!m) return null;
         return mat3.transformPoint(m, px, py);
@@ -55,8 +50,7 @@ export abstract class Shape
         return { x: bounds.centerX, y: bounds.centerY };
     }
 
-    resizeFromDeviceAABB(minX: number, minY: number, maxX: number, maxY: number)
-    {
+    resizeFromDeviceAABB(minX: number, minY: number, maxX: number, maxY: number) {
         const oldBounds = this.getBounds();
         if (!oldBounds) return;
 
@@ -81,8 +75,7 @@ export abstract class Shape
         this.transform.scaleY *= scaleY;
     }
 
-    setBounds(minX: number, minY: number, maxX: number, maxY: number) 
-    {
+    setBounds(minX: number, minY: number, maxX: number, maxY: number) {
         this.resizeFromDeviceAABB(minX, minY, maxX, maxY);
     }
 
@@ -100,13 +93,11 @@ export abstract class Shape
     abstract getLocalBounds(): Bounds | null;
     abstract toJSON(): any;
 
-    protected getFillColor(): RGBA 
-    {
+    protected getFillColor(): RGBA {
         return hexToRGBA(this.fillStyle, Math.floor(this.fillOpacity * 255));
     }
 
-    protected getStrokeColor(): RGBA
-    {
+    protected getStrokeColor(): RGBA{
         return hexToRGBA(this.strokeStyle, Math.floor(this.strokeOpacity * 255));
     }
 }

@@ -7,8 +7,7 @@ export class Oval extends Shape {
     rx: number;
     ry: number;
 
-    constructor(rx: number, ry: number)
-    {
+    constructor(rx: number, ry: number){
         super();
         this.rx = rx;
         this.ry = ry;
@@ -34,8 +33,7 @@ export class Oval extends Shape {
         return Bounds.fromPoints(points);
     }
 
-    drawRaster(r: RasterRenderer): void
-    {
+    drawRaster(r: RasterRenderer): void{
         const points: Point2D[] = [];
         const steps = 36;
         for (let i = 0; i < steps; i++) {
@@ -45,19 +43,16 @@ export class Oval extends Shape {
             points.push(this.transformPointToDevice(x, y));
         }
 
-        if (this.fillOpacity > 0) 
-        {
+        if (this.fillOpacity > 0) {
             r.fillPolygon(points, this.getFillColor());
         }
 
-        if (this.strokeOpacity > 0 && this.strokeWidth > 0) 
-        {
+        if (this.strokeOpacity > 0 && this.strokeWidth > 0) {
             r.strokePolygon(points, this.getStrokeColor(), this.strokeWidth);
         }
     }
 
-    hitTest(px: number, py: number): boolean 
-    {
+    hitTest(px: number, py: number): boolean {
         const localPoint = this.transformPointToLocal(px, py);
         if (!localPoint) return false;
 

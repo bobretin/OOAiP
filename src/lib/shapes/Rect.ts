@@ -2,25 +2,21 @@
 import { Bounds } from './Bounds';
 import { RasterRenderer } from '.././raster/RasterRenderer.ts';
 
-export class Rect extends Shape 
-{
+export class Rect extends Shape {
     w: number;
     h: number;
 
-    constructor(w: number, h: number)
-    {
+    constructor(w: number, h: number){
         super();
         this.w = w;
         this.h = h;
     }
 
-    getLocalBounds(): Bounds | null 
-    {
+    getLocalBounds(): Bounds | null {
         return new Bounds(-this.w / 2, -this.h / 2, this.w / 2, this.h / 2);
     }
 
-    getBounds(): Bounds | null 
-    {
+    getBounds(): Bounds | null {
         const localBounds = this.getLocalBounds();
         if (!localBounds) return null;
 
@@ -35,8 +31,7 @@ export class Rect extends Shape
         return Bounds.fromPoints(deviceCorners);
     }
 
-    drawRaster(r: RasterRenderer): void 
-    {
+    drawRaster(r: RasterRenderer): void {
         const localBounds = this.getLocalBounds();
         if (!localBounds) return;
 
@@ -53,14 +48,12 @@ export class Rect extends Shape
             r.fillPolygon(deviceCorners, this.getFillColor());
         }
 
-        if (this.strokeOpacity > 0 && this.strokeWidth > 0) 
-        {
+        if (this.strokeOpacity > 0 && this.strokeWidth > 0) {
             r.strokePolygon(deviceCorners, this.getStrokeColor(), this.strokeWidth);
         }
     }
 
-    hitTest(px: number, py: number): boolean 
-    {
+    hitTest(px: number, py: number): boolean {
         const localPoint = this.transformPointToLocal(px, py);
         if (!localPoint) return false;
 

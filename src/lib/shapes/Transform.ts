@@ -1,15 +1,13 @@
 import { Mat3, mat3 } from '../math/mat3';
 
-export class Transform 
-{
+export class Transform {
     x: number;
     y: number;
     rotation: number; // в радианах
     scaleX: number;
     scaleY: number;
 
-    constructor(x = 0, y = 0, rotation = 0, scaleX = 1, scaleY = 1) 
-    {
+    constructor(x = 0, y = 0, rotation = 0, scaleX = 1, scaleY = 1)  {
         this.x = x;
         this.y = y;
         this.rotation = rotation;
@@ -17,23 +15,19 @@ export class Transform
         this.scaleY = scaleY;
     }
 
-    toMatrix(): Mat3 
-    {
+    toMatrix(): Mat3 {
         return mat3.fromTransform(this.x, this.y, this.rotation, this.scaleX, this.scaleY);
     }
 
-    clone(): Transform 
-    {
+    clone(): Transform {
         return new Transform(this.x, this.y, this.rotation, this.scaleX, this.scaleY);
     }
 }
 
-export function createTransform(x = 0, y = 0, rotation = 0, scaleX = 1, scaleY = 1): Transform
-{
+export function createTransform(x = 0, y = 0, rotation = 0, scaleX = 1, scaleY = 1): Transform{
     return new Transform(x, y, rotation, scaleX, scaleY);
 }
 
-export function identityTransform(): Transform
-{
+export function identityTransform(): Transform{
     return new Transform(0, 0, 0, 1, 1);
 }
