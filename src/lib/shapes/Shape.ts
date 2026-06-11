@@ -1,105 +1,112 @@
-import { mat3, Mat3, Point2D } from '../math/mat3';
-import { Transform, identityTransform } from './Transform';
+﻿import { Mat3, mat3, Point2D } from '../math/mat3';
+import { Transform } from './Transform';
 import { Bounds } from './Bounds';
-import { RasterRenderer, RGBA } from '../raster/RasterRenderer';
+import { RasterRenderer, RGBA, hexToRGBA } from '../raster/RasterRenderer.ts';
 
-export interface ShapeStyle {
+let nextId = 1;
+
+export abstract class Shape 
+{
+    id: number;
+    transform: Transform;
     fillStyle: string;
     fillOpacity: number;
     strokeStyle: string;
     strokeWidth: number;
     strokeOpacity: number;
-}
 
-export abstract class Shape {
-    id: string;
-    transform: Transform;
-    
-    // Стили
-    fillStyle: string = '#ffffff';
-    fillOpacity: number = 1;
-    strokeStyle: string = '#000000';
-    strokeWidth: number = 1;
-    strokeOpacity: number = 1;
-
-    constructor(id: string, transform?: Transform) {
-        this.id = id;
-        this.transform = transform || identityTransform();
+    constructor() {
+        this.id = nextId++;
+        this.transform = new Transform();
+        this.fillStyle = '#000000';
+        this.fillOpacity = 1.0;
+        this.strokeStyle = '#000000';
+        this.strokeWidth = 1;
+        this.strokeOpacity = 1.0;
     }
 
-    // Получить матрицу перехода из локальных координат в экранные
-    getLocalToDeviceMatrix(): Mat3 {
-        return mat3.fromTransform(
-            this.transform.x,
-            this.transform.y,
-            this.transform.rotation,
-            this.transform.scaleX,
-            this.transform.scaleY
-        );
+    getLocalToDeviceMatrix(): Mat3 
+    {
+        return this.transform.toMatrix();
     }
 
-    // Получить обратную матрицу (экранные -> локальные)
-    getDeviceToLocalMatrix(): Mat3 | null {
-        return mat3.invert(this.getLocalToDeviceMatrix());
+    getDeviceToLocalMatrix(): Mat3 | null 
+    {
+        const localToDevice = this.getLocalToDeviceMatrix();
+        return mat3.invert(localToDevice);
     }
 
-    // Перевести точку из локальных координат в экранные
-    transformPointToDevice(px: number, py: number): Point2D {
+    transformPointToDevice(px: number, py: number): Point2D 
+    {
         const m = this.getLocalToDeviceMatrix();
         return mat3.transformPoint(m, px, py);
     }
 
-    // Перевести точку из экранных координат в локальные
-    transformPointToLocal(px: number, py: number): Point2D | null {
-        const inv = this.getDeviceToLocalMatrix();
-        if (!inv) return null;
-        return mat3.transformPoint(inv, px, py);
+    transformPointToLocal(px: number, py: number): Point2D | null 
+    {
+        const m = this.getDeviceToLocalMatrix();
+        if (!m) return null;
+        return mat3.transformPoint(m, px, py);
     }
 
-    // Получить центр фигуры в экранных координатах
     getCenter(): Point2D {
-        const localBounds = this.getLocalBounds();
-        const cx = (localBounds.minX + localBounds.maxX) / 2;
-        const cy = (localBounds.minY + localBounds.maxY) / 2;
-        return this.transformPointToDevice(cx, cy);
+        const bounds = this.getBounds();
+        if (!bounds) return { x: 0, y: 0 };
+        return { x: bounds.centerX, y: bounds.centerY };
     }
 
-    // Изменить границы фигуры (для ресайза)
-    resizeFromDeviceAABB(minX: number, minY: number, maxX: number, maxY: number): void {
-        const oldCenter = this.getCenter();
-        const newCenter = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
-        
-        // Обновляем позицию
-        this.transform.x += newCenter.x - oldCenter.x;
-        
-        // Получаем локальные границы и обновляем масштаб
-        const localBounds = this.getLocalBounds();
-        const oldWidth = localBounds.maxX - localBounds.minX;
-        const oldHeight = localBounds.maxY - localBounds.minY;
+    resizeFromDeviceAABB(minX: number, minY: number, maxX: number, maxY: number)
+    {
+        const oldBounds = this.getBounds();
+        if (!oldBounds) return;
+
+        const oldCenter = oldBounds.centerX;
+        const oldHeight = oldBounds.height;
+        const oldWidth = oldBounds.width;
+
         const newWidth = maxX - minX;
         const newHeight = maxY - minY;
-        
-        if (oldWidth > 0) this.transform.scaleX *= newWidth / oldWidth;
-        if (oldHeight > 0) this.transform.scaleY *= newHeight / oldHeight;
-        
-        this.updateFromLocalBounds(this.getLocalBounds());
+        const newCenterX = (minX + maxX) / 2;
+        const newCenterY = (minY + maxY) / 2;
+
+        if (oldWidth === 0 || oldHeight === 0) return;
+
+        const scaleX = newWidth / oldWidth;
+        const scaleY = newHeight / oldHeight;
+
+        this.transform.x += newCenterX - oldCenter;
+        this.transform.y += newCenterY - oldBounds.centerY;
+
+        this.transform.scaleX *= scaleX;
+        this.transform.scaleY *= scaleY;
     }
 
-    // Обёртка для resizeFromDeviceAABB
-    setBounds(minX: number, minY: number, maxX: number, maxY: number): void {
+    setBounds(minX: number, minY: number, maxX: number, maxY: number) 
+    {
         this.resizeFromDeviceAABB(minX, minY, maxX, maxY);
     }
 
-    // Создать копию фигуры
-    abstract clone(): Shape;
+    clone(): Shape {
+        const cloned = Object.create(Object.getPrototypeOf(this));
+        Object.assign(cloned, this);
+        cloned.id = nextId++;
+        cloned.transform = this.transform.clone();
+        return cloned;
+    }
 
-    // Абстрактные методы (должны быть реализованы в наследниках)
     abstract drawRaster(r: RasterRenderer): void;
     abstract hitTest(px: number, py: number): boolean;
-    abstract getBounds(): Bounds;
-    abstract getLocalBounds(): Bounds;
-    abstract toJSON(): object;
-    
-    // Обновить фигуру из локальных границ (должен переопределять наследник при необходимости)
-    protected updateFromLocalBounds(_bounds: Bounds): void {}
+    abstract getBounds(): Bounds | null;
+    abstract getLocalBounds(): Bounds | null;
+    abstract toJSON(): any;
+
+    protected getFillColor(): RGBA 
+    {
+        return hexToRGBA(this.fillStyle, Math.floor(this.fillOpacity * 255));
+    }
+
+    protected getStrokeColor(): RGBA
+    {
+        return hexToRGBA(this.strokeStyle, Math.floor(this.strokeOpacity * 255));
+    }
 }

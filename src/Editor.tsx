@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Square, Circle, Pen, MousePointer } from 'lucide-react';
+import { ArrowLeft, Save, Square, Circle, Pen, MousePointer, Brush } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import CanvasScene from './components/CanvasScene';
@@ -79,6 +79,27 @@ export default function Editor() {
                     >
                         <Pen size={20} className="text-white" />
                     </motion.button>
+                    
+                    {/* Разделитель */}
+                    <div className="w-8 h-px bg-slate-700 my-2" />
+                    
+                    {/* Переключатель алгоритмов линий */}
+                    <div className="flex flex-col gap-2">
+                        <button
+                            onClick={() => setLineAlg('bresenham')}
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${lineAlg === 'bresenham' ? 'bg-blue-600' : 'bg-slate-700 hover:bg-slate-600'}`}
+                            title="Алгоритм Брезенхема (чёткие линии)"
+                        >
+                            <Brush size={18} className="text-white" />
+                        </button>
+                        <button
+                            onClick={() => setLineAlg('wu')}
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${lineAlg === 'wu' ? 'bg-blue-600' : 'bg-slate-700 hover:bg-slate-600'}`}
+                            title="Алгоритм Ву (сглаженные линии)"
+                        >
+                            <span className="text-white text-xs font-bold">Wu</span>
+                        </button>
+                    </div>
                 </aside>
 
                 {/* Центральный холст - ТЕПЕРЬ ЗДЕСЬ РАСТЕРИЗАТОР */}

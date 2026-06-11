@@ -1,11 +1,14 @@
 import { describe, test, expect } from 'vitest';
-import { Rect, Line, Oval } from './index';
+import { Rect, Line, Oval, createTransform } from './index';
 
 describe('Rect', () => {
     test('hitTest - точка внутри прямоугольника', () => {
-        // Прямоугольник с центром в (100, 100), шириной 80, высотой 40
-        // Границы: X от 60 до 140, Y от 80 до 120
-        const rect = new Rect('test1', 100, 100, 80, 40);
+        // Прямоугольник с шириной 80, высотой 40
+        // Центр по умолчанию в (0,0) в локальных координатах
+        const rect = new Rect(80, 40);
+        
+        // Устанавливаем трансформацию для смещения в (100, 100)
+        rect.transform = createTransform(100, 100, 0, 1, 1);
         
         // Центр - внутри
         expect(rect.hitTest(100, 100)).toBe(true);
@@ -27,21 +30,29 @@ describe('Rect', () => {
     });
 
     test('getBounds - границы прямоугольника', () => {
-        const rect = new Rect('test2', 100, 100, 80, 40);
-        const bounds = rect.getBounds();
+        const rect = new Rect(80, 40);
+        rect.transform = createTransform(100, 100, 0, 1, 1);
         
-        // Границы должны соответствовать центру (100,100) и размеру (80,40)
-        expect(bounds.minX).toBeCloseTo(60);
-        expect(bounds.maxX).toBeCloseTo(140);
-        expect(bounds.minY).toBeCloseTo(80);
-        expect(bounds.maxY).toBeCloseTo(120);
+        const bounds = rect.getBounds();
+        expect(bounds).not.toBeNull();
+        
+        if (bounds) {
+            // Границы должны соответствовать центру (100,100) и размеру (80,40)
+            expect(bounds.minX).toBeCloseTo(60);
+            expect(bounds.maxX).toBeCloseTo(140);
+            expect(bounds.minY).toBeCloseTo(80);
+            expect(bounds.maxY).toBeCloseTo(120);
+        }
     });
 });
 
 describe('Line', () => {
     test('hitTest - точка на линии', () => {
-        // Линия от (0,0) до (100,0) с центром в (50,0)
-        const line = new Line('test3', 0, 0, 100, 0);
+        // Линия от (0,0) до (100,0)
+        const line = new Line(0, 0, 100, 0);
+        
+        // Устанавливаем толщину линии для hitTest
+        line.strokeWidth = 4;
         
         // Точка на линии
         expect(line.hitTest(50, 0)).toBe(true);
@@ -58,8 +69,9 @@ describe('Line', () => {
 
 describe('Oval', () => {
     test('hitTest - точка внутри овала', () => {
-        // Овал с центром в (100, 100), радиус X=50, радиус Y=30
-        const oval = new Oval('test4', 100, 100, 50, 30);
+        // Овал с радиусом X=50, радиус Y=30
+        const oval = new Oval(50, 30);
+        oval.transform = createTransform(100, 100, 0, 1, 1);
         
         // Центр - внутри
         expect(oval.hitTest(100, 100)).toBe(true);
@@ -77,12 +89,17 @@ describe('Oval', () => {
     });
 
     test('getBounds - границы овала', () => {
-        const oval = new Oval('test5', 100, 100, 50, 30);
-        const bounds = oval.getBounds();
+        const oval = new Oval(50, 30);
+        oval.transform = createTransform(100, 100, 0, 1, 1);
         
-        expect(bounds.minX).toBeCloseTo(50);
-        expect(bounds.maxX).toBeCloseTo(150);
-        expect(bounds.minY).toBeCloseTo(70);
-        expect(bounds.maxY).toBeCloseTo(130);
+        const bounds = oval.getBounds();
+        expect(bounds).not.toBeNull();
+        
+        if (bounds) {
+            expect(bounds.minX).toBeCloseTo(50);
+            expect(bounds.maxX).toBeCloseTo(150);
+            expect(bounds.minY).toBeCloseTo(70);
+            expect(bounds.maxY).toBeCloseTo(130);
+        }
     });
 });

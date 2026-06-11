@@ -1,21 +1,39 @@
-export interface Transform {
-    x: number;      // смещение по X
-    y: number;      // смещение по Y
-    rotation: number; // поворот в радианах
-    scaleX: number;   // масштаб по X
-    scaleY: number;   // масштаб по Y
+import { Mat3, mat3 } from '../math/mat3';
+
+export class Transform 
+{
+    x: number;
+    y: number;
+    rotation: number; // в радианах
+    scaleX: number;
+    scaleY: number;
+
+    constructor(x = 0, y = 0, rotation = 0, scaleX = 1, scaleY = 1) 
+    {
+        this.x = x;
+        this.y = y;
+        this.rotation = rotation;
+        this.scaleX = scaleX;
+        this.scaleY = scaleY;
+    }
+
+    toMatrix(): Mat3 
+    {
+        return mat3.fromTransform(this.x, this.y, this.rotation, this.scaleX, this.scaleY);
+    }
+
+    clone(): Transform 
+    {
+        return new Transform(this.x, this.y, this.rotation, this.scaleX, this.scaleY);
+    }
 }
 
-export function createTransform(
-    x: number = 0,
-    y: number = 0,
-    rotation: number = 0,
-    scaleX: number = 1,
-    scaleY: number = 1
-): Transform {
-    return { x, y, rotation, scaleX, scaleY };
+export function createTransform(x = 0, y = 0, rotation = 0, scaleX = 1, scaleY = 1): Transform
+{
+    return new Transform(x, y, rotation, scaleX, scaleY);
 }
 
-export function identityTransform(): Transform {
-    return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+export function identityTransform(): Transform
+{
+    return new Transform(0, 0, 0, 1, 1);
 }

@@ -29,7 +29,6 @@ export const mat3 = {
         }
     }
     return result;
-        throw new Error("Not implemented");
     },
 
     translate(tx: number, ty: number): Mat3 {
@@ -38,7 +37,6 @@ export const mat3 = {
         0, 1, ty,
         0, 0, 1
     ];
-        throw new Error("Not implemented");
     },
 
     scale(sx: number, sy: number): Mat3 {
@@ -47,7 +45,6 @@ export const mat3 = {
         0, sy, 0,
         0, 0, 1
     ];
-        throw new Error("Not implemented");
     },
 
     rotate(rad: number): Mat3 {
@@ -58,7 +55,6 @@ export const mat3 = {
         s, c, 0,
         0, 0, 1
     ];
-        throw new Error("Not implemented");
     },
 
     fromTransform(
@@ -72,7 +68,6 @@ export const mat3 = {
     
     const rs = this.multiply(r, s);
     return this.multiply(t, rs);
-        throw new Error("Not implemented");
     },
 
     transformPoint(m: Mat3, x: number, y: number): Point2D {
@@ -80,7 +75,6 @@ export const mat3 = {
         x: m[0] * x + m[1] * y + m[2],
         y: m[3] * x + m[4] * y + m[5]
     };
-        throw new Error("Not implemented");
     },
 
     invert(m: Mat3): Mat3 | null {
@@ -104,6 +98,5 @@ export const mat3 = {
         (c * tx - a * ty) * invDet,
         0, 0, 1
     ];
-        throw new Error("Not implemented");
     }
 };
