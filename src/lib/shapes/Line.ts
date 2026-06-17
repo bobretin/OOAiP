@@ -1,5 +1,6 @@
 ﻿import { Shape } from './Shape';
 import { Bounds } from './Bounds';
+import { Point2D } from '.././math/mat3';
 import { RasterRenderer } from '.././raster/RasterRenderer.ts';
 
 export class Line extends Shape {
@@ -49,6 +50,24 @@ export class Line extends Shape {
 
         if (this.strokeOpacity > 0 && this.strokeWidth > 0) {
             r.strokeLine(p1.x, p1.y, p2.x, p2.y, this.getStrokeColor(), this.strokeWidth);
+        }
+    }
+
+    getControlPoints(): Point2D[] {
+        return [{ x: this.x1, y: this.y1 }, { x: this.x2, y: this.y2 }];
+    }
+
+    setControlPoint(idx: number, pt: Point2D): void {
+        switch (idx) {
+            case 0:
+                this.x1 = pt.x;
+                this.y1 = pt.y;
+                break;
+            case 1:
+                this.x2 = pt.x;
+                this.y2 = pt.y;
+                break;
+            default: throw new Error(`Invalid index: ${idx}`);
         }
     }
 

@@ -268,7 +268,7 @@ export class PathBezier extends Shape {
     }
 
     drawRaster(r: RasterRenderer): void {
-        const flatness = 1;
+        const flatness = 3;
         const points = this.flattenDevicePoints(flatness);
 
         if (points.length < 2) return;
@@ -347,7 +347,7 @@ export class PathBezier extends Shape {
         p0: Point2D, p1: Point2D, p2: Point2D, p3: Point2D,
         threshold: number
     ): boolean {
-        const steps = 50;
+        const steps = 20;
         for (let i = 0; i < steps; i++) {
             const t1 = i / steps;
             const t2 = (i + 1) / steps;

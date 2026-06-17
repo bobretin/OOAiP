@@ -99,7 +99,7 @@ export class QuadraticBezier extends Shape {
 
     drawRaster(r: RasterRenderer): void {
         // Используем flattenDevicePoints для отрисовки
-        const flatness = 1; // Более высокая точность для отрисовки
+        const flatness = 3;
         const points = this.flattenDevicePoints(flatness);
 
         if (this.strokeOpacity > 0 && this.strokeWidth > 0) {

@@ -112,7 +112,7 @@ export class CubicBezier extends Shape {
     }
 
     drawRaster(r: RasterRenderer): void {
-        const flatness = 1;
+        const flatness = 3;
         const points = this.flattenDevicePoints(flatness);
 
         if (this.strokeOpacity > 0 && this.strokeWidth > 0) {

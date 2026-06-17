@@ -79,6 +79,15 @@ export abstract class Shape {
         this.resizeFromDeviceAABB(minX, minY, maxX, maxY);
     }
 
+    // Методы для работы с контрольными точками (базовая реализация)
+    getControlPoints(): Point2D[] | null {
+        return null; // По умолчанию у фигуры нет контрольных точек
+    }
+
+    setControlPoint(_idx: number, _pt: Point2D): void {
+        throw new Error('setControlPoint не поддерживается для этой фигуры');
+    }
+
     clone(): Shape {
         const cloned = Object.create(Object.getPrototypeOf(this));
         Object.assign(cloned, this);

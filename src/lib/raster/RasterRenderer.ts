@@ -136,9 +136,7 @@ export class RasterRenderer {
     // TODO: Очистка буфера.
     beginFrame(clear = true){
         if (clear && this.buf) {
-            for (let i = 0; i < this.buf.length; i++) {
-                this.buf[i] = 0;
-            }
+            this.buf.fill(0);
         }
     }
 
