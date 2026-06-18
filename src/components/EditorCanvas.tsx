@@ -10,28 +10,33 @@ import { QuadraticBezier } from "../lib/shapes/QuadraticBezier";
 import { CubicBezier } from "../lib/shapes/CubicBezier";
 import { Point2D } from "../lib/math/mat3";
 
+interface EditorCanvasProps {
+    onShapesChange?: (shapes: Shape[]) => void;
+    initialShapes?: Shape[];
+}
+
 type ResizeHandle = 'nw' | 'ne' | 'se' | 'sw' | null;
 
 const HANDLE_SIZE = 8;
 const ROTATION_HANDLE_DISTANCE = 40;
 const MIN_SIZE = 10;
 
-export default function EditorCanvas() {
+export default function EditorCanvas({ onShapesChange, initialShapes = [] }: EditorCanvasProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const rendererRef = useRef<RasterRenderer | null>(null);
     const isMountedRef = useRef(true);
     const needsRenderRef = useRef(true);
+    const isInitializedRef = useRef(false);
+    const isUpdatingRef = useRef(false);
     
-    // Состояние только для UI (список слоёв, выделение)
+    // Состояние
     const [shapes, setShapes] = useState<Shape[]>([]);
     const [selectedId, setSelectedId] = useState<number | null>(null);
     
-    // Refs для логики (чтобы не зависеть от рендеров React)
+    // Refs
     const shapesRef = useRef<Shape[]>([]);
     const selectedIdRef = useRef<number | null>(null);
-    
-    // Ref для функции отрисовки выделения (чтобы рендерцикл не зависел от неё)
     const drawSelectionUIRef = useRef<(renderer: RasterRenderer, shape: Shape) => void>(() => {});
     
     // Синхронизация state -> ref
@@ -45,46 +50,75 @@ export default function EditorCanvas() {
         needsRenderRef.current = true;
     }, [selectedId]);
     
-    // ========== ИНИЦИАЛИЗАЦИЯ ФИГУР ==========
+    // ========== ИНИЦИАЛИЗАЦИЯ ФИГУР (ТОЛЬКО ОДИН РАЗ) ==========
     useEffect(() => {
-        const newShapes: Shape[] = [];
+        if (isInitializedRef.current) return;
         
-        const rect = new Rect(200, 100);
-        rect.transform.x = 400; rect.transform.y = 300; rect.transform.rotation = Math.PI / 6;
-        rect.fillStyle = "#0088ff"; rect.fillOpacity = 0.8; rect.strokeStyle = "#000000"; rect.strokeWidth = 2;
-        newShapes.push(rect);
+        let newShapes: Shape[] = [];
         
-        const line = new Line(0, 0, 300, 0);
-        line.transform.x = 100; line.transform.y = 500; line.transform.rotation = -Math.PI / 4;
-        line.strokeStyle = "#00ff00"; line.strokeWidth = 5;
-        newShapes.push(line);
+        if (initialShapes && initialShapes.length > 0) {
+            newShapes = initialShapes;
+        } else {
+            // Создание фигур по умолчанию
+            const rect = new Rect(200, 100);
+            rect.transform.x = 400; rect.transform.y = 300; rect.transform.rotation = Math.PI / 6;
+            rect.fillStyle = "#0088ff"; rect.fillOpacity = 0.8; rect.strokeStyle = "#000000"; rect.strokeWidth = 2;
+            newShapes.push(rect);
+            
+            const line = new Line(0, 0, 300, 0);
+            line.transform.x = 100; line.transform.y = 500; line.transform.rotation = -Math.PI / 4;
+            line.strokeStyle = "#00ff00"; line.strokeWidth = 5;
+            newShapes.push(line);
+            
+            const oval = new Oval(80, 50);
+            oval.transform.x = 700; oval.transform.y = 200;
+            oval.fillStyle = "#ff0000"; oval.fillOpacity = 0.5; oval.strokeStyle = "#ffffff"; oval.strokeWidth = 2;
+            newShapes.push(oval);
+            
+            const triangle = Triangle.fromWidthHeight(150, 120);
+            triangle.transform.x = 250; triangle.transform.y = 200; triangle.transform.rotation = Math.PI / 8;
+            triangle.fillStyle = "#00ffaa"; triangle.fillOpacity = 0.7; triangle.strokeStyle = "#ffffff"; triangle.strokeWidth = 3;
+            newShapes.push(triangle);
+            
+            const quadBezier = new QuadraticBezier(100, 500, 250, 300, 400, 500);
+            quadBezier.strokeStyle = "#ffaa00"; quadBezier.strokeWidth = 4; quadBezier.fillOpacity = 0;
+            newShapes.push(quadBezier);
+            
+            const cubicBezier = new CubicBezier(500, 450, 550, 200, 650, 600, 750, 450);
+            cubicBezier.strokeStyle = "#ff00ff"; cubicBezier.strokeWidth = 4; cubicBezier.fillOpacity = 0;
+            newShapes.push(cubicBezier);
+            
+            const catmullPath = new PathBezier('catmull', false);
+            catmullPath.addPointLocal(600, 250); catmullPath.addPointLocal(700, 200);
+            catmullPath.addPointLocal(800, 300); catmullPath.addPointLocal(900, 250);
+            catmullPath.strokeStyle = "#ffff00"; catmullPath.strokeWidth = 3; catmullPath.fillOpacity = 0;
+            newShapes.push(catmullPath);
+        }
         
-        const oval = new Oval(80, 50);
-        oval.transform.x = 700; oval.transform.y = 200;
-        oval.fillStyle = "#ff0000"; oval.fillOpacity = 0.5; oval.strokeStyle = "#ffffff"; oval.strokeWidth = 2;
-        newShapes.push(oval);
-        
-        const triangle = Triangle.fromWidthHeight(150, 120);
-        triangle.transform.x = 250; triangle.transform.y = 200; triangle.transform.rotation = Math.PI / 8;
-        triangle.fillStyle = "#00ffaa"; triangle.fillOpacity = 0.7; triangle.strokeStyle = "#ffffff"; triangle.strokeWidth = 3;
-        newShapes.push(triangle);
-        
-        const quadBezier = new QuadraticBezier(100, 500, 250, 300, 400, 500);
-        quadBezier.strokeStyle = "#ffaa00"; quadBezier.strokeWidth = 4; quadBezier.fillOpacity = 0;
-        newShapes.push(quadBezier);
-        
-        const cubicBezier = new CubicBezier(500, 450, 550, 200, 650, 600, 750, 450);
-        cubicBezier.strokeStyle = "#ff00ff"; cubicBezier.strokeWidth = 4; cubicBezier.fillOpacity = 0;
-        newShapes.push(cubicBezier);
-        
-        const catmullPath = new PathBezier('catmull', false);
-        catmullPath.addPointLocal(600, 250); catmullPath.addPointLocal(700, 200);
-        catmullPath.addPointLocal(800, 300); catmullPath.addPointLocal(900, 250);
-        catmullPath.strokeStyle = "#ffff00"; catmullPath.strokeWidth = 3; catmullPath.fillOpacity = 0;
-        newShapes.push(catmullPath);
-        
+        shapesRef.current = newShapes;
         setShapes(newShapes);
-    }, []);
+        isInitializedRef.current = true;
+        
+        // Один раз передаём фигуры в родителя
+        if (onShapesChange) {
+            onShapesChange(newShapes);
+        }
+    }, [initialShapes, onShapesChange]);
+    
+    // ========== ОБНОВЛЕНИЕ ФИГУР (БЕЗ БЕСКОНЕЧНОГО ЦИКЛА) ==========
+    const updateShapes = useCallback((newShapes: Shape[]) => {
+        if (isUpdatingRef.current) return;
+        isUpdatingRef.current = true;
+        
+        shapesRef.current = newShapes;
+        setShapes(newShapes);
+        
+        if (onShapesChange) {
+            onShapesChange(newShapes);
+        }
+        
+        isUpdatingRef.current = false;
+    }, [onShapesChange]);
     
     // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
     const getCanvasCoords = useCallback((clientX: number, clientY: number): Point2D => {
@@ -137,33 +171,32 @@ export default function EditorCanvas() {
         return null;
     }, [getShapeCorners]);
     
-    // ========== ЛОГИКА УДАЛЕНИЯ И СЛОЁВ ==========
+    // ========== УДАЛЕНИЕ ==========
     const deleteSelected = useCallback(() => {
         if (selectedIdRef.current === null) return;
-        const idToDelete = selectedIdRef.current;
-        setShapes(prev => prev.filter(s => s.id !== idToDelete));
+        const newShapes = shapesRef.current.filter(s => s.id !== selectedIdRef.current);
         setSelectedId(null);
-    }, []);
+        updateShapes(newShapes);
+    }, [updateShapes]);
     
+    // ========== СЛОИ ==========
     const moveUp = useCallback((id: number) => {
-        setShapes(prev => {
-            const idx = prev.findIndex(s => s.id === id);
-            if (idx === -1 || idx === prev.length - 1) return prev;
-            const newShapes = [...prev];
-            [newShapes[idx], newShapes[idx + 1]] = [newShapes[idx + 1], newShapes[idx]];
-            return newShapes;
-        });
-    }, []);
+        const currentShapes = shapesRef.current;
+        const idx = currentShapes.findIndex(s => s.id === id);
+        if (idx === -1 || idx === currentShapes.length - 1) return;
+        const newShapes = [...currentShapes];
+        [newShapes[idx], newShapes[idx + 1]] = [newShapes[idx + 1], newShapes[idx]];
+        updateShapes(newShapes);
+    }, [updateShapes]);
     
     const moveDown = useCallback((id: number) => {
-        setShapes(prev => {
-            const idx = prev.findIndex(s => s.id === id);
-            if (idx === -1 || idx === 0) return prev;
-            const newShapes = [...prev];
-            [newShapes[idx], newShapes[idx - 1]] = [newShapes[idx - 1], newShapes[idx]];
-            return newShapes;
-        });
-    }, []);
+        const currentShapes = shapesRef.current;
+        const idx = currentShapes.findIndex(s => s.id === id);
+        if (idx === -1 || idx === 0) return;
+        const newShapes = [...currentShapes];
+        [newShapes[idx], newShapes[idx - 1]] = [newShapes[idx - 1], newShapes[idx]];
+        updateShapes(newShapes);
+    }, [updateShapes]);
     
     // ========== СОСТОЯНИЕ ДРАГА ==========
     const dragStateRef = useRef<{
@@ -287,8 +320,10 @@ export default function EditorCanvas() {
             shape.transform.rotation = data.rotation + (currentAngle - startAngle);
         }
         
+        // Обновляем фигуры после изменения
+        updateShapes([...shapesRef.current]);
         needsRenderRef.current = true;
-    }, [getCanvasCoords]);
+    }, [getCanvasCoords, updateShapes]);
     
     const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
         dragStateRef.current.active = false;
@@ -304,7 +339,7 @@ export default function EditorCanvas() {
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [deleteSelected]);
     
-    // ========== ОТРИСОВКА UI ВЫДЕЛЕНИЯ ==========
+    // ========== ОТРИСОВКА UI ==========
     const drawSelectionUI = useCallback((renderer: RasterRenderer, shape: Shape) => {
         const bounds = shape.getBounds();
         if (!bounds) return;
@@ -352,7 +387,7 @@ export default function EditorCanvas() {
         drawSelectionUIRef.current = drawSelectionUI;
     }, [drawSelectionUI]);
     
-    // ========== РЕНДЕР-ЦИКЛ (запускается один раз) ==========
+    // ========== РЕНДЕР-ЦИКЛ ==========
     useEffect(() => {
         isMountedRef.current = true;
         const canvas = canvasRef.current;
@@ -381,7 +416,6 @@ export default function EditorCanvas() {
             const currentShapes = shapesRef.current;
             const currentSelectedId = selectedIdRef.current;
             
-            // Рисуем только если нужна перерисовка
             if (r && needsRenderRef.current) {
                 r.beginFrame(true);
                 
@@ -409,11 +443,10 @@ export default function EditorCanvas() {
             resizeObserver.disconnect();
             if (rendererRef.current) rendererRef.current.dispose();
         };
-    }, []); // пустой массив Цикл запускается только один раз
+    }, []);
     
     return (
         <div className="flex flex-col gap-4 w-full h-full bg-slate-900 text-white">
-            {/* Панель инструментов */}
             <div className="flex gap-2 p-2 bg-slate-800 border-b border-slate-700 shrink-0">
                 <button 
                     onClick={deleteSelected} 
@@ -438,7 +471,6 @@ export default function EditorCanvas() {
                     />
                 </div>
                 
-                {/* Панель слоёв */}
                 <aside className="w-64 bg-slate-800 border border-slate-700 rounded p-3 overflow-y-auto shrink-0">
                     <h3 className="font-bold mb-2">Слои</h3>
                     {shapes.length === 0 ? (
