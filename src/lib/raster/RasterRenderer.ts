@@ -149,6 +149,10 @@ export class RasterRenderer {
 
     // TODO: Алгоритм Брезенхема.
     drawLineBrassenham(x0: number, y0: number, x1: number, y1: number, color: RGBA) {
+        x0 = Math.round(x0);
+        y0 = Math.round(y0);
+        x1 = Math.round(x1);
+        y1 = Math.round(y1);
         let dx = Math.abs(x1 - x0);
         let dy = Math.abs(y1 - y0);
         const sx = x0 < x1 ? 1 : -1;
